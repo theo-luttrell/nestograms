@@ -400,7 +400,17 @@ export async function fetchPuzzles(): Promise<PuzzleMap> {
     }
     const map: PuzzleMap = {};
     snap.forEach((docSnap) => {
-      map[docSnap.id] = docSnap.data() as any;
+      const data = docSnap.data();
+      const nonogram = typeof data.nonogram === 'string' ? JSON.parse(data.nonogram) : data.nonogram;
+      const reveal =
+        typeof data['nonogram-reveal'] === 'string'
+          ? JSON.parse(data['nonogram-reveal'])
+          : data['nonogram-reveal'];
+      map[docSnap.id] = {
+        ...data,
+        nonogram,
+        'nonogram-reveal': reveal,
+      } as any;
     });
     return map;
   } catch (err) {

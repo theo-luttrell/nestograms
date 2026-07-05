@@ -232,7 +232,11 @@ async function seed() {
   console.log('Starting puzzle seeding to Firestore...');
   for (const [id, puzzleData] of Object.entries(seedPuzzles)) {
     const docRef = doc(db, 'puzzles', id);
-    await setDoc(docRef, puzzleData);
+    await setDoc(docRef, {
+      ...puzzleData,
+      nonogram: JSON.stringify(puzzleData.nonogram),
+      'nonogram-reveal': JSON.stringify(puzzleData['nonogram-reveal']),
+    });
     console.log(`Seeded puzzle ID: ${id} (${puzzleData.name}, size: ${puzzleData.size})`);
   }
   console.log('Seeding complete!');
