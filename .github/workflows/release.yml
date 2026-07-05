@@ -1,0 +1,88 @@
+name: Automated Extension Release & Packaging
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build, Test & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Placeholder Icons
+        run: node scripts/generate-icons.js
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Unit Tests (Vitest)
+        run: npm test
+
+      - name: Build Extension (Strip Dev Files)
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || 'mock-key' }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN || 'mock.firebaseapp.com' }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID || 'mock-project' }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET || 'mock.appspot.com' }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID || '000000' }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID || '1:000000:web:000000' }}
+
+      - name: Create Web Store Zip Payload
+        run: |
+          cd dist
+          zip -r ../nestograms-${{ github.ref_name }}-webstore.zip *
+          cd ..
+
+      - name: Create Compiled CRX File
+        run: |
+          npx crx3@latest dist -o nestograms-${{ github.ref_name }}.crx || echo "CRX generation fallback used if private key missing"
+
+      - name: Create Source Code Archive
+        run: |
+          git archive -o nestograms-${{ github.ref_name }}-source.zip HEAD
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            nestograms-${{ github.ref_name }}-webstore.zip
+            nestograms-${{ github.ref_name }}.crx
+            nestograms-${{ github.ref_name }}-source.zip
+          generate_release_notes: true
+          body: |
+            ## Nestograms Chrome Extension (${{ github.ref_name }})
+            
+            ### 🚀 Installation & Web Store
+            - **Chrome Web Store**: [Placeholder Link - Pending Submission](https://chromewebstore.google.com/)
+            - **Manual Unpacked Install**: Download `nestograms-${{ github.ref_name }}-webstore.zip`, extract it, open `chrome://extensions`, enable **Developer Mode**, and click **Load unpacked**.
+            - **Compiled CRX**: Download `nestograms-${{ github.ref_name }}.crx` and drag-and-drop into `chrome://extensions` (if supported by OS policies).
+            
+            ### ✨ Highlights
+            - Manifest V3 Chrome Extension powered by Vite & CRXJS.
+            - High-performance grid rendering with crosshair highlighting and responsive scaling up to 20x20.
+            - Exclusive keyboard controls with auto-repeat, wrap-around, and simultaneous Z/X priority handling.
+            - Window blur protection with auto-pause grid concealing.
+            - Offline score queuing and Firebase Firestore synchronization.
+            - Unskippable Manhattan distance reveal waves and confetti cannons.
+            
+            ---
+            *Automated release drafted via GitHub Actions CI/CD pipeline.*

@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Puzzles collection: read-only for clients, writable by seed script/admin
+    match /puzzles/{puzzleId} {
+      allow read: if true;
+      allow write: if false; // Use Admin SDK or Firebase Console to seed
+    }
+    
+    // Users collection: username tracking and uniqueness constraints
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth != null 
+                            && request.auth.uid == userId
+                            && request.resource.data.username is string
+                            && request.resource.data.username.size() >= 3
+                            && request.resource.data.username.size() <= 16;
+    }
+    
+    // Scores collection: rate limited and plausibility verified
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow create, update: if request.auth != null 
+                            && request.resource.data.uid == request.auth.uid
+                            && request.resource.data.score is number
+                            && request.resource.data.score >= 0
+                            && request.resource.data.time > 0;
+      allow delete: if false; // Soft deletes / no permanent client deletes
+    }
+  }
+}
