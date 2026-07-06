@@ -5,7 +5,7 @@ service cloud.firestore {
     // Puzzles collection: read-only for clients, writable by seed script/admin
     match /puzzles/{puzzleId} {
       allow read: if true;
-      allow write: if false; // Use Admin SDK or Firebase Console to seed
+      allow write: if false; // Writable only by Admin SDK / Console
     }
     
     // Users collection: username tracking and uniqueness constraints

@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 
 dotenv.config();
 
@@ -230,16 +232,35 @@ const seedPuzzles: Record<string, any> = {
 
 async function seed() {
   console.log('Starting puzzle seeding to Firestore...');
-  for (const [id, puzzleData] of Object.entries(seedPuzzles)) {
+  let puzzlesToSeed: Record<string, any> = seedPuzzles;
+  const generatedPuzzlesPath = path.resolve(process.cwd(), 'puzzles.json');
+
+  if (fs.existsSync(generatedPuzzlesPath)) {
+    console.log(`\n📦 Found generated puzzles at: ${generatedPuzzlesPath}`);
+    puzzlesToSeed = JSON.parse(fs.readFileSync(generatedPuzzlesPath, 'utf8'));
+    console.log(`Successfully loaded ${Object.keys(puzzlesToSeed).length} puzzles for seeding!`);
+  } else {
+    console.log('\n⚠️ No puzzles.json found. Seeding the default 4 hardcoded puzzles.');
+    console.log('Tip: Run `npx tsx scripts/generate-puzzles.ts` first to generate all 600 puzzles!');
+  }
+
+  let count = 0;
+  for (const [id, puzzleData] of Object.entries(puzzlesToSeed)) {
     const docRef = doc(db, 'puzzles', id);
     await setDoc(docRef, {
       ...puzzleData,
-      nonogram: JSON.stringify(puzzleData.nonogram),
-      'nonogram-reveal': JSON.stringify(puzzleData['nonogram-reveal']),
+      nonogram: typeof puzzleData.nonogram === 'string' ? puzzleData.nonogram : JSON.stringify(puzzleData.nonogram),
+      'nonogram-reveal':
+        typeof puzzleData['nonogram-reveal'] === 'string'
+          ? puzzleData['nonogram-reveal']
+          : JSON.stringify(puzzleData['nonogram-reveal']),
     });
-    console.log(`Seeded puzzle ID: ${id} (${puzzleData.name}, size: ${puzzleData.size})`);
+    count++;
+    if (count <= 10 || count % 50 === 0 || count === Object.keys(puzzlesToSeed).length) {
+      console.log(`Seeded puzzle ID: ${id} (${puzzleData.name}, size: ${puzzleData.size}) [${count}/${Object.keys(puzzlesToSeed).length}]`);
+    }
   }
-  console.log('Seeding complete!');
+  console.log(`\n✅ Seeding complete! Total puzzles uploaded to Firestore: ${count}`);
   process.exit(0);
 }
 
