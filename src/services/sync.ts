@@ -244,11 +244,11 @@ export async function submitScore(
 
   const now = Date.now();
   const lastSubmit = Number(localStorage.getItem(LAST_SUBMIT_KEY) || 0);
-  if (now - lastSubmit < 30000) {
+  if (now - lastSubmit < 2000) {
     return {
       success: false,
       queued: false,
-      message: 'Rate limit exceeded. Please wait 30 seconds between submissions.',
+      message: 'Rate limit exceeded. Please wait 2 seconds between submissions.',
     };
   }
   localStorage.setItem(LAST_SUBMIT_KEY, String(now));
@@ -274,13 +274,17 @@ export async function submitScore(
       timestamp: serverTimestamp(),
     });
 
-    // Also update user doc
-    const userRef = doc(db, 'users', user.uid);
-    await setDoc(
-      userRef,
-      { username: entry.username, updatedAt: serverTimestamp() },
-      { merge: true }
-    );
+    // Also update user doc (non-blocking)
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(
+        userRef,
+        { username: entry.username, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch (uErr) {
+      console.warn('Non-critical error updating user profile:', uErr);
+    }
 
     return { success: true, queued: false };
   } catch (err) {
@@ -355,13 +359,14 @@ export async function fetchLeaderboard(limitCount = 50): Promise<ScoreEntry[]> {
 
   try {
     const scoresRef = collection(db, 'scores');
-    const q = query(scoresRef, orderBy('score', 'desc'), orderBy('time', 'asc'), limit(limitCount));
+    const q = query(scoresRef, orderBy('score', 'desc'), limit(100));
     const snap = await getDocs(q);
     const entries: ScoreEntry[] = [];
     snap.forEach((docSnap) => {
       entries.push({ id: docSnap.id, ...docSnap.data() } as ScoreEntry);
     });
-    return entries;
+    entries.sort((a, b) => b.score - a.score || a.time - b.time);
+    return entries.slice(0, limitCount);
   } catch (err) {
     console.warn('Failed to fetch leaderboard from Firestore, using mock:', err);
     return [

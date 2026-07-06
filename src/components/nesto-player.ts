@@ -375,7 +375,7 @@ export class NestoPlayer extends HTMLElement {
         username: this._settings?.username || 'Player',
         puzzleId: this._state.puzzleId,
         score: this._state.score,
-        time: Math.floor(this._state.elapsedTime),
+        time: Math.max(1, Math.round(this._state.elapsedTime)),
         date: new Date().toLocaleDateString(),
         difficulty: this._state.difficulty,
         hash,

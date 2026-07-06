@@ -21,7 +21,6 @@ export class NestoTutorial extends HTMLElement {
   private _colClues: number[][] = [];
   private _cursorRow = 0;
   private _cursorCol = 0;
-  private _fakeScore = 500;
   private _tipMessage =
     'Use Arrow Keys to move. Press Z to fill a cell, X to mark empty, Backspace to clear.';
   private _completed = false;
@@ -46,7 +45,6 @@ export class NestoTutorial extends HTMLElement {
     this._colClues = generateColClues(this._target);
     this._cursorRow = 0;
     this._cursorCol = 0;
-    this._fakeScore = 500;
     this._completed = false;
     this.render();
   }
@@ -103,11 +101,8 @@ export class NestoTutorial extends HTMLElement {
       if (current !== CellState.FILLED) {
         this._grid[this._cursorRow][this._cursorCol] = CellState.FILLED;
         if (targetVal === 0) {
-          this._fakeScore = Math.max(0, this._fakeScore - 50);
-          this._tipMessage =
-            'Oops! That cell should not be filled. -50 fake points! Try marking it with X.';
+          this._tipMessage = 'Oops! That cell should not be filled! Try marking it with X.';
         } else {
-          this._fakeScore += 20;
           this._tipMessage = 'Great fill! Keep satisfying the number clues.';
         }
       }
@@ -115,7 +110,6 @@ export class NestoTutorial extends HTMLElement {
       if (current !== CellState.CROSSED) {
         this._grid[this._cursorRow][this._cursorCol] = CellState.CROSSED;
         if (targetVal === 1) {
-          this._fakeScore = Math.max(0, this._fakeScore - 30);
           this._tipMessage = 'Careful! That cell is actually part of the filled pattern.';
         } else {
           this._tipMessage = 'Good X mark! This rules out empty cells.';
@@ -211,6 +205,8 @@ export class NestoTutorial extends HTMLElement {
         }
         .corner {
           background: var(--bg-color, #faf9f6);
+          border-right: 1px solid var(--border-thick, #1a1a18);
+          border-bottom: 1px solid var(--border-thick, #1a1a18);
         }
         .col-clue {
           background: var(--bg-color, #faf9f6);
@@ -222,7 +218,8 @@ export class NestoTutorial extends HTMLElement {
           font-size: 12px;
           font-weight: 700;
           gap: 2px;
-          border-right: 1px solid var(--border-color, #d1cfc7);
+          border-right: 1px solid var(--grid-line, #cccccc);
+          border-bottom: 1px solid var(--border-thick, #1a1a18);
         }
         .row-clue {
           background: var(--bg-color, #faf9f6);
@@ -233,11 +230,13 @@ export class NestoTutorial extends HTMLElement {
           font-size: 12px;
           font-weight: 700;
           gap: 4px;
-          border-bottom: 1px solid var(--border-color, #d1cfc7);
+          border-bottom: 1px solid var(--grid-line, #cccccc);
+          border-right: 1px solid var(--border-thick, #1a1a18);
         }
         .clue-satisfied {
           color: var(--crossed-cell, #8c8b85);
           text-decoration: line-through;
+          opacity: 0.6;
         }
         .cell {
           background: var(--bg-color, #faf9f6);
@@ -246,15 +245,16 @@ export class NestoTutorial extends HTMLElement {
           justify-content: center;
           font-size: 18px;
           font-weight: 700;
-          cursor: pointer;
           border-right: 1px solid var(--grid-line, #cccccc);
           border-bottom: 1px solid var(--grid-line, #cccccc);
-          transition: background 0.15s ease;
+          transition: background 0.15s ease, transform 0.15s ease;
+          pointer-events: none;
         }
         .cell.active {
           outline: 2px solid var(--text-main, #1a1a18);
           outline-offset: -2px;
           background: var(--highlight-crosshair, rgba(26, 26, 24, 0.08));
+          z-index: 2;
         }
         .cell.crosshair {
           background: var(--highlight-crosshair, rgba(26, 26, 24, 0.04));
@@ -308,7 +308,7 @@ export class NestoTutorial extends HTMLElement {
           ${ICONS.tutorial}
           <span>How To Play Nonograms</span>
         </div>
-        <div class="score-badge">Fake Score: ${this._fakeScore} pts (0 real pts)</div>
+        <div class="score-badge">Practice Mode</div>
       </div>
 
       <div class="instruction-card">
