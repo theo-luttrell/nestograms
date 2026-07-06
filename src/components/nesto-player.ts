@@ -315,7 +315,7 @@ export class NestoPlayer extends HTMLElement {
 
   private updateScore() {
     if (!this._state) return;
-    const maxCells = this._state.grid.length * this._state.grid[0].length;
+    const maxCells = this._state.puzzle.nonogram.flat().filter((val) => val === 1).length;
     const elapsedSeconds =
       this._state.startTime > 0 ? (performance.now() - this._state.startTime) / 1000 : 0;
     this._state.elapsedTime = elapsedSeconds;
@@ -363,7 +363,7 @@ export class NestoPlayer extends HTMLElement {
       await saveGameState(this._state);
 
       // Generate anticheat hash & submit score
-      const maxCells = rows * cols;
+      const maxCells = this._state.puzzle.nonogram.flat().filter((val) => val === 1).length;
       const hash = generateSyncHash(
         this._state.grid,
         this._state.score,
