@@ -200,8 +200,11 @@ export class NestoTutorial extends HTMLElement {
           grid-template-columns: 60px repeat(4, 48px);
           grid-template-rows: 60px repeat(4, 48px);
           gap: 0;
-          border: 2px solid var(--border-thick, #1a1a18);
-          background: var(--border-thick, #1a1a18);
+          border: 3px solid var(--border-thick, #1a1a18);
+          background: var(--grid-line, #cccccc);
+          position: relative;
+          user-select: none;
+          box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
         }
         .corner {
           background: var(--bg-color, #faf9f6);
