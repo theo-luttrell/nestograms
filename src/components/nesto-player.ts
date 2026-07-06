@@ -111,16 +111,39 @@ export class NestoPlayer extends HTMLElement {
     rootEl?.focus();
   }
 
-  public async startNewGame(diff: Difficulty) {
+  public async startNewGame(diff: Difficulty, next = false) {
     this._currentDifficulty = diff;
-    const diffKey = String(diff);
-    const puzzle = this._puzzles[diffKey] || FALLBACK_PUZZLES[diffKey] || FALLBACK_PUZZLES['1'];
+    
+    const allPuzzles = { ...FALLBACK_PUZZLES, ...this._puzzles };
+    const matchingEntries = Object.entries(allPuzzles).filter(
+      ([id, p]) => p.size === Number(diff) || id === String(diff)
+    );
+
+    matchingEntries.sort((a, b) => Number(a[0]) - Number(b[0]));
+
+    let chosenEntry = matchingEntries[0] || [String(diff), FALLBACK_PUZZLES['1']];
+
+    if (matchingEntries.length > 1) {
+      if (next && this._state?.puzzleId) {
+        const currIdx = matchingEntries.findIndex(([id]) => id === this._state?.puzzleId);
+        const nextIdx = currIdx !== -1 ? (currIdx + 1) % matchingEntries.length : 0;
+        chosenEntry = matchingEntries[nextIdx];
+      } else if (this._state?.puzzleId && this._state.difficulty === diff && !next) {
+        const currEntry = matchingEntries.find(([id]) => id === this._state?.puzzleId);
+        if (currEntry) chosenEntry = currEntry;
+      } else {
+        const randomIndex = Math.floor(Math.random() * matchingEntries.length);
+        chosenEntry = matchingEntries[randomIndex];
+      }
+    }
+
+    const [puzzleId, puzzle] = chosenEntry;
 
     const rows = puzzle.nonogram.length;
     const cols = puzzle.nonogram[0].length;
 
     this._state = {
-      puzzleId: diffKey,
+      puzzleId,
       difficulty: diff,
       puzzle,
       grid: createEmptyGrid(rows, cols),
@@ -202,7 +225,14 @@ export class NestoPlayer extends HTMLElement {
       return;
     }
 
-    if (this._state.isCompleted || this._isRevealing) return;
+    if (this._state.isCompleted) {
+      if ((e.key === 'Enter' || e.key === ' ') && !this._isRevealing) {
+        e.preventDefault();
+        this.startNewGame(this._currentDifficulty, true);
+      }
+      return;
+    }
+    if (this._isRevealing) return;
 
     this._activeKeys.add(e.key);
 
@@ -715,6 +745,7 @@ export class NestoPlayer extends HTMLElement {
             <button class="diff-btn ${this._currentDifficulty === Difficulty.IMPOSSIBLE ? 'active' : ''}" data-diff="${Difficulty.IMPOSSIBLE}">Impossible (20x20)</button>
           </div>
           <div class="stats">
+            <div class="stat-badge" title="Puzzle ID #${this._state.puzzleId}">#${this._state.puzzleId}</div>
             <div class="stat-badge">Time: ${Math.floor(this._state.elapsedTime)}s</div>
             <div class="stat-badge">Score: ${this._state.score}</div>
           </div>
@@ -723,7 +754,10 @@ export class NestoPlayer extends HTMLElement {
         <div class="board-container">
           ${
             this._revealedName
-              ? `<div class="win-banner">🎉 ${this._revealedName} Completed! Score: ${this._state.score}</div>`
+              ? `<div class="win-banner" style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
+                  <span>🎉 ${this._revealedName} (#${this._state.puzzleId}) Completed! Score: ${this._state.score}</span>
+                  <button class="diff-btn active" id="btn-banner-next" style="background: var(--text-main, #1a1a18); color: var(--bg-color, #faf9f6); font-weight: 600; cursor: pointer;">Next Puzzle ➔</button>
+                 </div>`
               : ''
           }
           <div class="board">
@@ -781,8 +815,11 @@ export class NestoPlayer extends HTMLElement {
         </div>
 
         <div class="footer">
-          <span>Controls: Arrows to move | Z to fill | X to mark | Backspace to clear</span>
-          <button class="diff-btn" id="btn-restart">Restart Puzzle</button>
+          <span>Controls: Arrows to move | Z to fill | X to mark | Backspace to clear | Enter/Space for Next when win</span>
+          <div style="display: flex; gap: 8px;">
+            <button class="diff-btn" id="btn-restart">Restart Puzzle</button>
+            <button class="diff-btn ${this._state.isCompleted ? 'active' : ''}" id="btn-next" style="${this._state.isCompleted ? 'background: var(--text-main, #1a1a18); color: var(--bg-color, #faf9f6); font-weight: 600;' : ''}">Next Puzzle ➔</button>
+          </div>
         </div>
       </div>
       <canvas id="confetti-canvas"></canvas>
@@ -798,6 +835,14 @@ export class NestoPlayer extends HTMLElement {
 
     this.shadowRoot.getElementById('btn-restart')?.addEventListener('click', () => {
       this.startNewGame(this._currentDifficulty);
+    });
+
+    this.shadowRoot.getElementById('btn-next')?.addEventListener('click', () => {
+      this.startNewGame(this._currentDifficulty, true);
+    });
+
+    this.shadowRoot.getElementById('btn-banner-next')?.addEventListener('click', () => {
+      this.startNewGame(this._currentDifficulty, true);
     });
 
     this.shadowRoot.getElementById('btn-resume')?.addEventListener('click', () => {
